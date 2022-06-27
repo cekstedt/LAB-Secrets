@@ -5,6 +5,7 @@ const bodyParser = require("body-parser");
 require("dotenv").config();
 const ejs = require("ejs");
 const mongoose = require("mongoose");
+const encrypt = require("mongoose-encryption");
 
 // Setting up imports for use.
 
@@ -17,8 +18,11 @@ mongoose.connect(process.env.MONGO_DB);
 // Global Variables.
 
 const PORT = process.env.PORT;
+const secret = process.env.SECRET;
 
 const userSchema = new mongoose.Schema({ user: String, password: String });
+userSchema.plugin(encrypt, { secret: secret, encryptedFields: ["password"] });
+
 const User = mongoose.model("User", userSchema);
 
 // GET routes.

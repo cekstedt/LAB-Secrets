@@ -5,7 +5,8 @@ const bodyParser = require("body-parser");
 require("dotenv").config();
 const ejs = require("ejs");
 const mongoose = require("mongoose");
-const md5 = require("md5");
+const bcrypt = require("bcrypt");
+const saltRounds = 10;
 
 // Setting up imports for use.
 
@@ -18,7 +19,6 @@ mongoose.connect(process.env.MONGO_DB);
 // Global Variables.
 
 const PORT = process.env.PORT;
-const secret = process.env.SECRET;
 
 const userSchema = new mongoose.Schema({ email: String, password: String });
 
@@ -41,16 +41,18 @@ app.get("/register", function(req, res) {
 // POST routes.
 
 app.post("/register", function(req, res) {
-  const newUser = new User({
-    email: req.body.username,
-    password: md5(req.body.password)
-  });
-  newUser.save(function(err) {
-    if (err) {
-      console.log(err);
-    } else {
-      res.render("secrets");
-    }
+  bcrypt.hash(req.body.password, saltRounds, function(err, hash) {
+    const newUser = new User({
+      email: req.body.username,
+      password: hash
+    });
+    newUser.save(function(err) {
+      if (err) {
+        console.log(err);
+      } else {
+        res.render("secrets");
+      }
+    });
   });
 });
 
@@ -59,12 +61,19 @@ app.post("/login", function(req, res) {
     if (err) {
       console.log(err);
     } else if (foundUser) {
-      if (foundUser.password === md5(req.body.password)) {
-        res.render("secrets");
-      } else {
-        // Handle wrong password.
-        console.log("Wrong password");
-      }
+      bcrypt.compare(req.body.password, foundUser.password, function(
+        err,
+        result
+      ) {
+        if (err) {
+          console.log(err);
+        } else if (result) {
+          res.render("secrets");
+        } else {
+          // Handle wrong password.
+          console.log("Wrong password");
+        }
+      });
     } else {
       // Handle user not found.
       console.log("User not found");

@@ -34,7 +34,8 @@ const PORT = process.env.PORT;
 const userSchema = new mongoose.Schema({
   username: String,
   password: String,
-  googleID: String
+  googleID: String,
+  secret: String
 });
 userSchema.plugin(passportLocalMongoose);
 userSchema.plugin(findOrCreate);
@@ -58,12 +59,7 @@ passport.use(
       state: true
     },
     function(accessToken, refreshToken, profile, cb) {
-      // console.log(profile);
-
       User.findOrCreate({ googleID: profile.id }, function(err, user, created) {
-        console.log(err);
-        console.log(user);
-        console.log(created);
         return cb(err, user);
       });
     }
@@ -85,11 +81,15 @@ app.get("/register", function(req, res) {
 });
 
 app.get("/secrets", function(req, res) {
-  if (req.isAuthenticated()) {
-    res.render("secrets");
-  } else {
-    res.redirect("/login");
-  }
+  User.find({ secret: { $ne: null } }, function(err, foundUsers) {
+    if (err) {
+      console.log(err);
+    } else {
+      if (foundUsers) {
+        res.render("secrets", { usersWithSecrets: foundUsers });
+      }
+    }
+  });
 });
 
 app.get("/logout", function(req, res) {
@@ -115,6 +115,14 @@ app.get(
     res.redirect("/secrets");
   }
 );
+
+app.get("/submit", function(req, res) {
+  if (req.isAuthenticated()) {
+    res.render("submit");
+  } else {
+    res.redirect("/login");
+  }
+});
 
 // POST routes.
 
@@ -149,6 +157,21 @@ app.post("/login", function(req, res) {
         // Only fires if authentication was successful.
         res.redirect("/secrets");
       });
+    }
+  });
+});
+
+app.post("/submit", function(req, res) {
+  User.findById(req.user.id, function(err, foundUser) {
+    if (err) {
+      console.log(err);
+    } else {
+      if (foundUser) {
+        foundUser.secret = req.body.secret;
+        foundUser.save(function() {
+          res.redirect("/secrets");
+        });
+      }
     }
   });
 });

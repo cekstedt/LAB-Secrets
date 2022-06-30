@@ -8,6 +8,8 @@ const mongoose = require("mongoose");
 const session = require("express-session");
 const passport = require("passport");
 const passportLocalMongoose = require("passport-local-mongoose");
+const GoogleStrategy = require("passport-google-oauth20").Strategy;
+const findOrCreate = require("mongoose-findorcreate");
 
 // Setting up imports for use.
 
@@ -29,12 +31,44 @@ app.use(passport.session());
 // Global Variables.
 
 const PORT = process.env.PORT;
-const userSchema = new mongoose.Schema({ username: String, password: String });
+const userSchema = new mongoose.Schema({
+  username: String,
+  password: String,
+  googleID: String
+});
 userSchema.plugin(passportLocalMongoose);
+userSchema.plugin(findOrCreate);
 const User = mongoose.model("User", userSchema);
 passport.use(User.createStrategy());
-passport.serializeUser(User.serializeUser());
-passport.deserializeUser(User.deserializeUser());
+passport.serializeUser(function(user, done) {
+  done(null, user.id);
+});
+passport.deserializeUser(function(id, done) {
+  User.findById(id, function(err, user) {
+    done(err, user);
+  });
+});
+passport.use(
+  new GoogleStrategy(
+    {
+      clientID: process.env.CLIENT_ID,
+      clientSecret: process.env.CLIENT_SECRET,
+      callbackURL: "http://localhost:3000/auth/google/secrets",
+      scope: ["profile"],
+      state: true
+    },
+    function(accessToken, refreshToken, profile, cb) {
+      // console.log(profile);
+
+      User.findOrCreate({ googleID: profile.id }, function(err, user, created) {
+        console.log(err);
+        console.log(user);
+        console.log(created);
+        return cb(err, user);
+      });
+    }
+  )
+);
 
 // GET routes.
 
@@ -68,6 +102,19 @@ app.get("/logout", function(req, res) {
     }
   });
 });
+
+app.get("/auth/google", passport.authenticate("google"));
+
+app.get(
+  "/auth/google/secrets",
+  passport.authenticate("google", {
+    failureRedirect: "/login",
+    failureMessage: true
+  }),
+  function(req, res) {
+    res.redirect("/secrets");
+  }
+);
 
 // POST routes.
 

@@ -24,7 +24,7 @@ app.use(
     saveUninitialized: false
   })
 );
-mongoose.connect(process.env.MONGO_DB);
+mongoose.connect(process.env.MONGO_DB + "/userDB");
 app.use(passport.initialize());
 app.use(passport.session());
 

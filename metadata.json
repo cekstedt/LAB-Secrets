@@ -19,5 +19,7 @@
     "mongoose",
     "passport",
     "oauth"
-  ]
+  ],
+  "status": "complete",
+  "priority": "done"
 }
